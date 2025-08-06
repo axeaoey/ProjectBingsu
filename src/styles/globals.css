@@ -1,6 +1,11 @@
-/* src/styles/globals.css */
+@import url('https://fonts.googleapis.com/css2?family=Iceland&display=swap');
+
+/* Tailwind directives */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* You can add custom styles below if needed */
+/* สามารถใส่ฟอนต์เป็น default ได้แบบนี้ก็ได้ */
+body {
+  font-family: 'Iceland', sans-serif;
+}
