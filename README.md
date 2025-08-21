@@ -13,14 +13,21 @@ npm install
 # yarn install
 ```
 
-### 2. รันเซิร์ฟเวอร์ dev
+### 2. รันเซิร์ฟเวอร์ backend 
+```bash
+cd backend
+npm run seed
+npm run dev
+```
+
+### 3. รันเซิร์ฟเวอร์ dev
 ```bash
 npm run dev
 # หรือใช้ yarn:
 # yarn dev
 ```
 
-### 3. เปิดเว็บ
+### 4. เปิดเว็บ
 เข้า browser ที่ http://localhost:3000
 
 ---
