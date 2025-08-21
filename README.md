@@ -20,7 +20,7 @@ npm run seed
 npm run dev
 ```
 
-### 3. รันเซิร์ฟเวอร์ dev
+### 3. กลับไปโฟล์เดอร์หลัก แล้วรันเซิร์ฟเวอร์ dev  
 ```bash
 npm run dev
 # หรือใช้ yarn:
