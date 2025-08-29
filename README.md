@@ -12,7 +12,9 @@ npm install
 # หรือใช้ yarn:
 # yarn install
 ```
-
+### 1.1 ติดตั้ง .env
+เข้าที่ browser https://drive.google.com/drive/folders/1C22BXkgY_p_vu1LYbVa_9JhTUqeKhMZ4?usp=sharing
+ดูในรูปเลย โฟลเดอร์ backend folder คือไฟล์ env ที่อยู่ในโฟล์เดอร์ backend
 ### 2. รันเซิร์ฟเวอร์ backend 
 ```bash
 cd backend
@@ -20,7 +22,7 @@ npm run seed
 npm run dev
 ```
 
-### 3. กลับไปโฟล์เดอร์หลัก แล้วรันเซิร์ฟเวอร์ dev  
+### 3. สร้างcmdใหม่เพื่อไปโฟล์เดอร์หลัก แล้วรันเซิร์ฟเวอร์ dev  
 ```bash
 npm run dev
 # หรือใช้ yarn:
