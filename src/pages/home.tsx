@@ -76,38 +76,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Quick Links Section */}
-      <div className="mt-12 max-w-4xl mx-auto">
-        <h3 className="text-2xl text-[#69806C] font-['Iceland'] mb-6 text-center">
-          Quick Links
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Link href="/order">
-            <div className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition cursor-pointer">
-              <div className="text-3xl mb-2 text-center">📦</div>
-              <p className="text-[#69806C] font-['Iceland'] text-center">Track Order</p>
-            </div>
-          </Link>
-          <Link href="/profile">
-            <div className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition cursor-pointer">
-              <div className="text-3xl mb-2 text-center">👤</div>
-              <p className="text-[#69806C] font-['Iceland'] text-center">Profile</p>
-            </div>
-          </Link>
-          <Link href="/review">
-            <div className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition cursor-pointer">
-              <div className="text-3xl mb-2 text-center">⭐</div>
-              <p className="text-[#69806C] font-['Iceland'] text-center">Reviews</p>
-            </div>
-          </Link>
-          <Link href="/cart">
-            <div className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition cursor-pointer">
-              <div className="text-3xl mb-2 text-center">🛒</div>
-              <p className="text-[#69806C] font-['Iceland'] text-center">Cart</p>
-            </div>
-          </Link>
-        </div>
-      </div>
     </div>
   );
 }

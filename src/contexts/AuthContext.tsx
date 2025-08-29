@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { api, User, getCurrentUser, isAuthenticated } from '@/utils/api';
+import { api, User, getCurrentUser, isAuthenticated, isAdmin } from '@/utils/api';
 
 interface AuthContextType {
   user: User | null;
@@ -11,6 +11,8 @@ interface AuthContextType {
   register: (data: any) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
+  checkAuth: () => boolean;
+  checkAdmin: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -75,8 +77,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
+  const checkAuth = () => {
+    return isAuthenticated();
+  };
+
+  const checkAdmin = () => {
+    return isAdmin();
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      login, 
+      register, 
+      logout, 
+      updateUser, 
+      checkAuth, 
+      checkAdmin 
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -89,3 +108,78 @@ export function useAuth() {
   }
   return context;
 }
+
+// Custom hooks for protecting pages
+export function useAuthRequired(redirectTo: string = '/login') {
+  const { checkAuth } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!checkAuth()) {
+      alert('กรุณาเข้าสู่ระบบก่อนเพื่อเข้าถึงหน้านี้');
+      router.push(redirectTo);
+    }
+  }, [checkAuth, router, redirectTo]);
+
+  return checkAuth();
+}
+
+export function useAdminRequired(redirectTo: string = '/home') {
+  const { checkAuth, checkAdmin } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!checkAuth()) {
+      alert('กรุณาเข้าสู่ระบบก่อนเพื่อเข้าถึงหน้า Admin');
+      router.push('/login');
+      return;
+    }
+
+    if (!checkAdmin()) {
+      alert('คุณไม่มีสิทธิ์เข้าถึงหน้า Admin\nเฉพาะผู้ดูแลระบบเท่านั้น');
+      router.push(redirectTo);
+      return;
+    }
+  }, [checkAuth, checkAdmin, router, redirectTo]);
+
+  return checkAuth() && checkAdmin();
+}
+
+// Higher-order component for protecting pages
+export const withAuth = <P extends object>(
+  WrappedComponent: React.ComponentType<P>,
+  options: { requireAdmin?: boolean; redirectTo?: string } = {}
+) => {
+  const AuthenticatedComponent = (props: P) => {
+    const router = useRouter();
+    const { checkAuth, checkAdmin } = useAuth();
+    const { requireAdmin = false, redirectTo = '/login' } = options;
+
+    useEffect(() => {
+      if (!checkAuth()) {
+        alert('กรุณาเข้าสู่ระบบก่อนเพื่อเข้าถึงหน้านี้');
+        router.push('/login');
+        return;
+      }
+
+      if (requireAdmin && !checkAdmin()) {
+        alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้\nเฉพาะผู้ดูแลระบบเท่านั้น');
+        router.push(redirectTo);
+        return;
+      }
+    }, [checkAuth, checkAdmin, router]);
+
+    if (!checkAuth() || (requireAdmin && !checkAdmin())) {
+      return (
+        <div className="min-h-screen w-full bg-[#EBE6DE] flex flex-col items-center justify-center">
+          <p className="text-2xl text-[#69806C] font-['Iceland']">กำลังตรวจสอบสิทธิ์...</p>
+        </div>
+      );
+    }
+
+    return <WrappedComponent {...props} />;
+  };
+
+  AuthenticatedComponent.displayName = `withAuth(${WrappedComponent.displayName || WrappedComponent.name})`;
+  return AuthenticatedComponent;
+};

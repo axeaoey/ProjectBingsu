@@ -47,49 +47,72 @@ export interface Review {
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {
+  if (typeof window === 'undefined') return {};
   const token = localStorage.getItem('token');
   return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+const handleApiError = async (response: Response) => {
+  if (!response.ok) {
+    try {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+    } catch (e) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+  }
+  return response;
 };
 
 // API class for all backend calls
 class BingsuAPI {
   // Auth endpoints
   async register(data: { fullName: string; email: string; password: string; confirmPassword: string }) {
-    const response = await fetch(`${API_BASE_URL}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.message);
-    
-    // Store token
-    if (result.token) {
-      localStorage.setItem('token', result.token);
-      localStorage.setItem('user', JSON.stringify(result.user));
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      
+      await handleApiError(response);
+      const result = await response.json();
+      
+      // Store token
+      if (result.token) {
+        localStorage.setItem('token', result.token);
+        localStorage.setItem('user', JSON.stringify(result.user));
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
     }
-    
-    return result;
   }
 
   async login(email: string, password: string) {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.message);
-    
-    // Store token and user
-    if (result.token) {
-      localStorage.setItem('token', result.token);
-      localStorage.setItem('user', JSON.stringify(result.user));
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      
+      await handleApiError(response);
+      const result = await response.json();
+      
+      // Store token and user
+      if (result.token) {
+        localStorage.setItem('token', result.token);
+        localStorage.setItem('user', JSON.stringify(result.user));
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
     }
-    
-    return result;
   }
 
   async logout() {
@@ -98,7 +121,10 @@ class BingsuAPI {
         method: 'POST',
         headers: getAuthHeaders()
       });
+    } catch (error) {
+      console.error('Logout API error:', error);
     } finally {
+      // Always clear local storage
       localStorage.removeItem('token');
       localStorage.removeItem('user');
     }

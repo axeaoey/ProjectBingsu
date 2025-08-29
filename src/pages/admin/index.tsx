@@ -1,11 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import Link from 'next/link';
 import LogoutModal from '@/components/LogoutModal';
+import { isAuthenticated, isAdmin, getCurrentUser, api } from '@/utils/api';
 
 export default function AdminPage() {
   const [showLogout, setShowLogout] = useState(false);
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
 
   const handleLogout = () => {
     console.log('Logged out');
