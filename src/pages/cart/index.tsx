@@ -4,16 +4,35 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 
+// Menu data
+const shavedIceFlavors = [
+  { name: 'Strawberry', price: 60, image: '/images/strawberry-ice.png' },
+  { name: 'Thai Tea', price: 60, image: '/images/thai-tea-ice.png' },
+  { name: 'Matcha', price: 60, image: '/images/matcha-ice.png' },
+  { name: 'Milk', price: 60, image: '/images/milk-ice.png' },
+  { name: 'Green Tea', price: 60, image: '/images/green-tea-ice.png' },
+];
+
+const toppings = [
+  { name: 'Apple', price: 10, image: '/images/apple.png' },
+  { name: 'Cherry', price: 10, image: '/images/cherry.png' },
+  { name: 'Blueberry', price: 10, image: '/images/blueberry.png' },
+  { name: 'Raspberry', price: 10, image: '/images/raspberry.png' },
+  { name: 'Strawberry', price: 10, image: '/images/strawberry.png' },
+  { name: 'Banana', price: 10, image: '/images/banana.png' },
+  { name: 'Mango', price: 10, image: '/images/mango.png' },
+];
+
 interface CartItem {
   id: string;
   cupSize: 'S' | 'M' | 'L';
   shavedIce: {
     flavor: string;
-    points: number;
+    price: number;
   };
   toppings: Array<{
     name: string;
-    points: number;
+    price: number;
   }>;
   quantity: number;
   price: number;
@@ -23,8 +42,11 @@ interface CartItem {
 export default function CartPage() {
   const router = useRouter();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [menuCode, setMenuCode] = useState('');
-  const [showCheckout, setShowCheckout] = useState(false);
+  const [showAddItem, setShowAddItem] = useState(false);
+  const [selectedFlavor, setSelectedFlavor] = useState('');
+  const [selectedSize, setSelectedSize] = useState<'S' | 'M' | 'L'>('M');
+  const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
+  const [specialInstructions, setSpecialInstructions] = useState('');
 
   useEffect(() => {
     // Load cart from localStorage
@@ -40,11 +62,53 @@ export default function CartPage() {
   };
 
   const calculateItemPrice = (item: CartItem) => {
-    let price = 60; // Base price
+    let price = item.shavedIce.price;
     const sizePrice = { S: 0, M: 10, L: 20 };
     price += sizePrice[item.cupSize];
     price += item.toppings.length * 10;
     return price * item.quantity;
+  };
+
+  const addToCart = () => {
+    if (!selectedFlavor) {
+      alert('Please select a flavor');
+      return;
+    }
+
+    const flavor = shavedIceFlavors.find(f => f.name === selectedFlavor);
+    const selectedToppingsData = toppings.filter(t => selectedToppings.includes(t.name));
+
+    const newItem: CartItem = {
+      id: Date.now().toString(),
+      cupSize: selectedSize,
+      shavedIce: {
+        flavor: selectedFlavor,
+        price: flavor?.price || 60
+      },
+      toppings: selectedToppingsData.map(t => ({
+        name: t.name,
+        price: t.price
+      })),
+      quantity: 1,
+      price: 0, // Will be calculated
+      specialInstructions
+    };
+
+    // Calculate price
+    let price = newItem.shavedIce.price;
+    const sizePrice = { S: 0, M: 10, L: 20 };
+    price += sizePrice[newItem.cupSize];
+    price += newItem.toppings.length * 10;
+    newItem.price = price;
+
+    saveCart([...cartItems, newItem]);
+    
+    // Reset form
+    setShowAddItem(false);
+    setSelectedFlavor('');
+    setSelectedSize('M');
+    setSelectedToppings([]);
+    setSpecialInstructions('');
   };
 
   const updateQuantity = (id: string, change: number) => {
@@ -75,33 +139,25 @@ export default function CartPage() {
   };
 
   const handleCheckout = () => {
-    if (!menuCode || menuCode.length !== 5) {
-      alert('Please enter a valid 5-character menu code');
+    if (cartItems.length === 0) {
+      alert('Your cart is empty');
       return;
     }
     
-    // In real implementation, this would validate the code and create orders
-    alert(`Processing checkout with code: ${menuCode}`);
-    
-    // Clear cart after successful checkout
-    localStorage.removeItem('bingsuCart');
-    setCartItems([]);
-    router.push('/order/track');
+    // Navigate to order page
+    router.push('/order');
   };
 
-  const addSampleItem = () => {
-    const sample: CartItem = {
-      id: Date.now().toString(),
-      cupSize: 'M',
-      shavedIce: { flavor: 'Matcha', points: 3 },
-      toppings: [
-        { name: 'Strawberry', points: 5 },
-        { name: 'Blueberry', points: 3 }
-      ],
-      quantity: 1,
-      price: 90
-    };
-    saveCart([...cartItems, sample]);
+  const toggleTopping = (toppingName: string) => {
+    if (selectedToppings.includes(toppingName)) {
+      setSelectedToppings(selectedToppings.filter(t => t !== toppingName));
+    } else {
+      if (selectedToppings.length >= 3) {
+        alert('Maximum 3 toppings allowed');
+        return;
+      }
+      setSelectedToppings([...selectedToppings, toppingName]);
+    }
   };
 
   return (
@@ -117,6 +173,168 @@ export default function CartPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-10">
+        {/* Add Item Button */}
+        {!showAddItem && (
+          <div className="mb-6 text-center">
+            <button
+              onClick={() => setShowAddItem(true)}
+              className="px-8 py-4 bg-[#69806C] text-white font-['Iceland'] text-xl rounded-lg hover:bg-[#5a6e5e] transition shadow-lg"
+            >
+              + Add New Bingsu
+            </button>
+          </div>
+        )}
+
+        {/* Add Item Form */}
+        {showAddItem && (
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <h2 className="text-2xl text-[#69806C] font-['Iceland'] mb-6">Create Your Bingsu</h2>
+            
+            {/* Size Selection */}
+            <div className="mb-6">
+              <h3 className="text-lg text-[#69806C] font-['Iceland'] mb-3">Select Size</h3>
+              <div className="flex gap-4">
+                {['S', 'M', 'L'].map((size) => (
+                  <button
+                    key={size}
+                    onClick={() => setSelectedSize(size as 'S' | 'M' | 'L')}
+                    className={`px-6 py-3 rounded-lg border-2 font-['Iceland'] text-lg transition ${
+                      selectedSize === size
+                        ? 'border-[#69806C] bg-[#69806C] text-white'
+                        : 'border-gray-300 hover:border-[#69806C]'
+                    }`}
+                  >
+                    Size {size} {size === 'S' ? '(+฿0)' : size === 'M' ? '(+฿10)' : '(+฿20)'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Flavor Selection */}
+            <div className="mb-6">
+              <h3 className="text-lg text-[#69806C] font-['Iceland'] mb-3">Select Flavor (Required)</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {shavedIceFlavors.map((flavor) => (
+                  <button
+                    key={flavor.name}
+                    onClick={() => setSelectedFlavor(flavor.name)}
+                    className={`rounded-lg border-2 font-['Iceland'] transition overflow-hidden ${
+                      selectedFlavor === flavor.name
+                        ? 'border-[#69806C] ring-2 ring-[#69806C]'
+                        : 'border-gray-300 hover:border-[#69806C]'
+                    }`}
+                  >
+                    <div className="relative">
+                      <img 
+                        src={flavor.image} 
+                        alt={flavor.name}
+                        className="w-full h-28 object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="hidden w-full h-28 bg-gradient-to-br from-[#69806C]/20 to-[#947E5A]/20 flex items-center justify-center text-4xl">
+                        🍧
+                      </div>
+                      {selectedFlavor === flavor.name && (
+                        <div className="absolute top-2 right-2 w-6 h-6 bg-[#69806C] text-white rounded-full flex items-center justify-center text-sm">
+                          ✓
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-2">
+                      <div className="font-bold text-sm">{flavor.name}</div>
+                      <div className="text-xs text-gray-600">฿{flavor.price}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Toppings Selection */}
+            <div className="mb-6">
+              <h3 className="text-lg text-[#69806C] font-['Iceland'] mb-3">
+                Select Toppings (Max 3) - ฿10 each
+              </h3>
+              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                {toppings.map((topping) => (
+                  <button
+                    key={topping.name}
+                    onClick={() => toggleTopping(topping.name)}
+                    className={`rounded-lg border-2 font-['Iceland'] transition overflow-hidden ${
+                      selectedToppings.includes(topping.name)
+                        ? 'border-[#69806C] ring-2 ring-[#69806C]'
+                        : 'border-gray-300 hover:border-[#69806C]'
+                    }`}
+                  >
+                    <div className="relative">
+                      <img 
+                        src={topping.image} 
+                        alt={topping.name}
+                        className="w-full h-20 object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="hidden w-full h-20 bg-gradient-to-br from-[#69806C]/20 to-[#947E5A]/20 flex items-center justify-center text-2xl">
+                        🍓
+                      </div>
+                      {selectedToppings.includes(topping.name) && (
+                        <div className="absolute top-1 right-1 w-5 h-5 bg-[#69806C] text-white rounded-full flex items-center justify-center text-xs">
+                          ✓
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-1 text-xs">
+                      {topping.name}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Special Instructions */}
+            <div className="mb-6">
+              <label className="block text-[#69806C] font-['Iceland'] mb-2">
+                Special Instructions (Optional)
+              </label>
+              <textarea
+                value={specialInstructions}
+                onChange={(e) => setSpecialInstructions(e.target.value)}
+                rows={2}
+                className="w-full p-2 border border-gray-300 rounded font-['Iceland']"
+                placeholder="Any special requests..."
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  setShowAddItem(false);
+                  setSelectedFlavor('');
+                  setSelectedSize('M');
+                  setSelectedToppings([]);
+                  setSpecialInstructions('');
+                }}
+                className="px-6 py-2 border border-gray-300 text-gray-600 font-['Iceland'] rounded-lg hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={addToCart}
+                disabled={!selectedFlavor}
+                className="px-6 py-2 bg-[#69806C] text-white font-['Iceland'] rounded-lg hover:bg-[#5a6e5e] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Add to Cart
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Cart Items */}
         {cartItems.length === 0 ? (
           <div className="bg-white rounded-xl shadow-lg p-12 text-center">
             <div className="text-6xl mb-4">🛒</div>
@@ -126,23 +344,10 @@ export default function CartPage() {
             <p className="text-gray-600 font-['Iceland'] mb-8">
               Add some delicious Bingsu to your cart!
             </p>
-            <div className="flex gap-4 justify-center">
-              <Link href="/menu">
-                <button className="px-6 py-3 bg-[#69806C] text-white font-['Iceland'] text-lg rounded-lg hover:bg-[#5a6e5e] transition">
-                  Go to Menu
-                </button>
-              </Link>
-              <button
-                onClick={addSampleItem}
-                className="px-6 py-3 bg-gray-400 text-white font-['Iceland'] text-lg rounded-lg hover:bg-gray-500 transition"
-              >
-                Add Sample Item (Demo)
-              </button>
-            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Cart Items */}
+            {/* Cart Items List */}
             <div className="lg:col-span-2">
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <div className="flex justify-between items-center mb-6">
@@ -161,20 +366,44 @@ export default function CartPage() {
                   {cartItems.map((item) => (
                     <div key={item.id} className="border-b pb-4">
                       <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h3 className="text-lg font-['Iceland'] text-[#543429] font-bold">
-                            {item.shavedIce.flavor} Bingsu - Size {item.cupSize}
-                          </h3>
-                          {item.toppings.length > 0 && (
-                            <p className="text-sm text-gray-600 font-['Iceland'] mt-1">
-                              Toppings: {item.toppings.map(t => t.name).join(', ')}
-                            </p>
-                          )}
-                          {item.specialInstructions && (
-                            <p className="text-sm text-gray-500 font-['Iceland'] mt-1 italic">
-                              Note: {item.specialInstructions}
-                            </p>
-                          )}
+                        <div className="flex gap-4 flex-1">
+                          {/* Product Image */}
+                          <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden">
+                            {(() => {
+                              const flavor = shavedIceFlavors.find(f => f.name === item.shavedIce.flavor);
+                              return flavor ? (
+                                <img 
+                                  src={flavor.image} 
+                                  alt={item.shavedIce.flavor}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                    (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                                  }}
+                                />
+                              ) : null;
+                            })()}
+                            <div className="hidden w-full h-full flex items-center justify-center text-3xl bg-gradient-to-br from-[#69806C]/20 to-[#947E5A]/20">
+                              🍧
+                            </div>
+                          </div>
+                          
+                          {/* Product Details */}
+                          <div className="flex-1">
+                            <h3 className="text-lg font-['Iceland'] text-[#543429] font-bold">
+                              {item.shavedIce.flavor} Bingsu - Size {item.cupSize}
+                            </h3>
+                            {item.toppings.length > 0 && (
+                              <p className="text-sm text-gray-600 font-['Iceland'] mt-1">
+                                Toppings: {item.toppings.map(t => t.name).join(', ')}
+                              </p>
+                            )}
+                            {item.specialInstructions && (
+                              <p className="text-sm text-gray-500 font-['Iceland'] mt-1 italic">
+                                Note: {item.specialInstructions}
+                              </p>
+                            )}
+                          </div>
                         </div>
                         <button
                           onClick={() => removeItem(item.id)}
@@ -234,47 +463,17 @@ export default function CartPage() {
                   </div>
                 </div>
 
-                {!showCheckout ? (
-                  <button
-                    onClick={() => setShowCheckout(true)}
-                    className="w-full py-3 bg-[#69806C] text-white font-['Iceland'] text-lg rounded-lg hover:bg-[#5a6e5e] transition"
-                  >
-                    Proceed to Checkout
-                  </button>
-                ) : (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm text-gray-700 font-['Iceland'] mb-2">
-                        Enter Menu Code
-                      </label>
-                      <input
-                        type="text"
-                        value={menuCode}
-                        onChange={(e) => setMenuCode(e.target.value.toUpperCase())}
-                        maxLength={5}
-                        placeholder="XXXXX"
-                        className="w-full p-3 border-2 border-[#69806C] rounded-lg font-['Iceland'] text-center text-xl tracking-widest"
-                      />
-                    </div>
-                    <button
-                      onClick={handleCheckout}
-                      disabled={!menuCode || menuCode.length !== 5}
-                      className="w-full py-3 bg-green-600 text-white font-['Iceland'] text-lg rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Confirm Order
-                    </button>
-                    <button
-                      onClick={() => setShowCheckout(false)}
-                      className="w-full py-2 text-gray-500 font-['Iceland'] hover:text-gray-700"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                )}
+                <button
+                  onClick={handleCheckout}
+                  disabled={cartItems.length === 0}
+                  className="w-full py-3 bg-[#69806C] text-white font-['Iceland'] text-lg rounded-lg hover:bg-[#5a6e5e] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Proceed to Checkout
+                </button>
 
-                <div className="mt-6 p-3 bg-blue-50 rounded-lg">
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                   <p className="text-xs text-blue-800 font-['Iceland']">
-                    💡 You need a menu code from the counter to complete your order
+                    💡 You'll need a menu code to complete your order at checkout
                   </p>
                 </div>
               </div>

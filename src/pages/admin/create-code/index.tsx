@@ -21,8 +21,12 @@ export default function CreateCodePage() {
   const handleConfirm = () => {
     const newCode = generateRandomCode();
     setGeneratedCode(newCode);
+    
+    // Save code mapping to localStorage
+    const codeMap = JSON.parse(localStorage.getItem('menuCodeMap') || '{}');
+    codeMap[newCode] = selectedSize;
+    localStorage.setItem('menuCodeMap', JSON.stringify(codeMap));
   };
-
   return (
           <div className="min-h-screen w-full bg-[#EBE6DE] flex flex-col items-center justify-start relative overflow-hidden">
         {/* Header */}
