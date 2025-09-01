@@ -13,13 +13,20 @@ export default function NavigationButtons() {
 
   // Function to check auth status
   const checkAuthStatus = () => {
-    const loggedIn = isAuthenticated();
-    const adminStatus = isAdmin();
-    const currentUser = getCurrentUser();
-    
-    setIsLoggedIn(loggedIn);
-    setIsUserAdmin(adminStatus);
-    setUser(currentUser);
+    try {
+      const loggedIn = isAuthenticated();
+      const adminStatus = isAdmin();
+      const currentUser = getCurrentUser();
+      
+      setIsLoggedIn(loggedIn);
+      setIsUserAdmin(adminStatus);
+      setUser(currentUser);
+    } catch (error) {
+      console.error('Error checking auth status:', error);
+      setIsLoggedIn(false);
+      setIsUserAdmin(false);
+      setUser(null);
+    }
   };
 
   useEffect(() => {
@@ -46,20 +53,20 @@ export default function NavigationButtons() {
 
   // Handle admin button click
   const handleAdminClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    
     // Re-check auth status before proceeding
     const currentLoggedIn = isAuthenticated();
     const currentAdminStatus = isAdmin();
     
     if (!currentLoggedIn) {
-      e.preventDefault();
-      alert('กรุณาเข้าสู่ระบบก่อนเพื่อเข้าถึงหน้า Admin');
+      alert('กรุณาเข้าสู่ระบบก่อนเพื่อเข้าถึงหน้า Admin\n\nDemo admin account:\nEmail: admin@bingsu.com\nPassword: admin123');
       router.push('/login');
       return;
     }
     
     if (!currentAdminStatus) {
-      e.preventDefault();
-      alert('คุณไม่มีสิทธิ์เข้าถึงหน้า Admin\nเฉพาะผู้ดูแลระบบเท่านั้น');
+      alert('คุณไม่มีสิทธิ์เข้าถึงหน้า Admin\nเฉพาะผู้ดูแลระบบเท่านั้น\n\nDemo admin account:\nEmail: admin@bingsu.com\nPassword: admin123');
       return;
     }
     
@@ -67,12 +74,24 @@ export default function NavigationButtons() {
     router.push('/admin');
   };
 
+  // Handle profile button click
+  const handleProfileClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    if (!isAuthenticated()) {
+      alert('กรุณาเข้าสู่ระบบก่อนเพื่อดูโปรไฟล์\n\nDemo accounts:\nUser: user@bingsu.com / user123\nAdmin: admin@bingsu.com / admin123');
+      router.push('/login');
+      return;
+    }
+  };
+
   // Button configurations
   const buttons = [
     { 
       text: isLoggedIn ? "Profile" : "Login", 
       path: isLoggedIn ? "/profile" : "/login",
-      requireAuth: false
+      requireAuth: false,
+      onClick: isLoggedIn ? handleProfileClick : undefined
     },
     { 
       text: "Cart", 
@@ -93,19 +112,20 @@ export default function NavigationButtons() {
       text: "Admin", 
       path: "/admin",
       requireAuth: true,
-      adminOnly: true
+      adminOnly: true,
+      onClick: handleAdminClick
     },
   ];
 
   return (
     <div className="absolute top-[280px] left-0 right-0 flex flex-wrap gap-4">
-      {buttons.map(({ text, path, requireAuth, adminOnly }, index) => {
-        // Special handling for admin button
-        if (adminOnly) {
+      {buttons.map(({ text, path, requireAuth, adminOnly, onClick }, index) => {
+        // Special handling for buttons with custom onClick
+        if (onClick) {
           return (
             <div
               key={index}
-              onClick={handleAdminClick}
+              onClick={onClick}
               className="cursor-pointer flex flex-col justify-center items-center w-[100px] h-[100px] bg-[#69806C] rounded-[5px] shadow-[0_0_10px_rgba(0,0,0,0.25),0_10px_30px_rgba(0,0,0,0.25)] text-white font-['Iceland'] text-[24px] transition hover:scale-105"
             >
               {text}
@@ -113,7 +133,7 @@ export default function NavigationButtons() {
           );
         }
 
-        // Regular buttons
+        // Regular buttons with Link
         return (
           <Link href={path} key={index}>
             <div className="cursor-pointer flex flex-col justify-center items-center w-[100px] h-[100px] bg-[#69806C] rounded-[5px] shadow-[0_0_10px_rgba(0,0,0,0.25),0_10px_30px_rgba(0,0,0,0.25)] text-white font-['Iceland'] text-[24px] transition hover:scale-105">
@@ -122,6 +142,8 @@ export default function NavigationButtons() {
           </Link>
         );
       })}
+      
+      
     </div>
   );
-}
+  }
