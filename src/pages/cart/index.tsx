@@ -4,13 +4,11 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 
-// Menu data
+// Updated menu data - removed Milk, Green Tea, Banana, Mango
 const shavedIceFlavors = [
   { name: 'Strawberry', price: 60, image: '/images/strawberry-ice.png' },
   { name: 'Thai Tea', price: 60, image: '/images/thai-tea-ice.png' },
   { name: 'Matcha', price: 60, image: '/images/matcha-ice.png' },
-  { name: 'Milk', price: 60, image: '/images/milk-ice.png' },
-  { name: 'Green Tea', price: 60, image: '/images/green-tea-ice.png' },
 ];
 
 const toppings = [
@@ -19,8 +17,6 @@ const toppings = [
   { name: 'Blueberry', price: 10, image: '/images/blueberry.png' },
   { name: 'Raspberry', price: 10, image: '/images/raspberry.png' },
   { name: 'Strawberry', price: 10, image: '/images/strawberry.png' },
-  { name: 'Banana', price: 10, image: '/images/banana.png' },
-  { name: 'Mango', price: 10, image: '/images/mango.png' },
 ];
 
 interface CartItem {
@@ -62,11 +58,12 @@ export default function CartPage() {
   };
 
   const calculateItemPrice = (item: CartItem) => {
-    let price = item.shavedIce.price;
+    const basePrice = item.shavedIce?.price || 60;
     const sizePrice = { S: 0, M: 10, L: 20 };
-    price += sizePrice[item.cupSize];
-    price += item.toppings.length * 10;
-    return price * item.quantity;
+    const sizeCost = sizePrice[item.cupSize] || 0;
+    const toppingsCost = (item.toppings?.length || 0) * 10;
+    const unitPrice = basePrice + sizeCost + toppingsCost;
+    return unitPrice * (item.quantity || 1);
   };
 
   const addToCart = () => {
@@ -90,16 +87,16 @@ export default function CartPage() {
         price: t.price
       })),
       quantity: 1,
-      price: 0, // Will be calculated
+      price: 0, // Will be calculated below
       specialInstructions
     };
 
-    // Calculate price
-    let price = newItem.shavedIce.price;
+    // Calculate price properly
+    const basePrice = newItem.shavedIce.price;
     const sizePrice = { S: 0, M: 10, L: 20 };
-    price += sizePrice[newItem.cupSize];
-    price += newItem.toppings.length * 10;
-    newItem.price = price;
+    const sizeCost = sizePrice[newItem.cupSize];
+    const toppingsCost = newItem.toppings.length * 10;
+    newItem.price = basePrice + sizeCost + toppingsCost;
 
     saveCart([...cartItems, newItem]);
     
@@ -135,7 +132,10 @@ export default function CartPage() {
   };
 
   const getSubtotal = () => {
-    return cartItems.reduce((sum, item) => sum + calculateItemPrice(item), 0);
+    return cartItems.reduce((sum, item) => {
+      const itemTotal = calculateItemPrice(item);
+      return sum + (isNaN(itemTotal) ? 0 : itemTotal);
+    }, 0);
   };
 
   const handleCheckout = () => {
@@ -213,7 +213,7 @@ export default function CartPage() {
             {/* Flavor Selection */}
             <div className="mb-6">
               <h3 className="text-lg text-[#69806C] font-['Iceland'] mb-3">Select Flavor (Required)</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {shavedIceFlavors.map((flavor) => (
                   <button
                     key={flavor.name}
@@ -228,13 +228,13 @@ export default function CartPage() {
                       <img 
                         src={flavor.image} 
                         alt={flavor.name}
-                        className="w-full h-28 object-cover"
+                        className="w-full h-32 object-cover"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = 'none';
                           (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
                         }}
                       />
-                      <div className="hidden w-full h-28 bg-gradient-to-br from-[#69806C]/20 to-[#947E5A]/20 flex items-center justify-center text-4xl">
+                      <div className="hidden w-full h-32 bg-gradient-to-br from-[#69806C]/20 to-[#947E5A]/20 flex items-center justify-center text-4xl">
                         🍧
                       </div>
                       {selectedFlavor === flavor.name && (
@@ -243,9 +243,9 @@ export default function CartPage() {
                         </div>
                       )}
                     </div>
-                    <div className="p-2">
-                      <div className="font-bold text-sm">{flavor.name}</div>
-                      <div className="text-xs text-gray-600">฿{flavor.price}</div>
+                    <div className="p-3">
+                      <div className="font-bold text-lg">{flavor.name}</div>
+                      <div className="text-sm text-gray-600">฿{flavor.price}</div>
                     </div>
                   </button>
                 ))}
@@ -257,7 +257,7 @@ export default function CartPage() {
               <h3 className="text-lg text-[#69806C] font-['Iceland'] mb-3">
                 Select Toppings (Max 3) - ฿10 each
               </h3>
-              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 {toppings.map((topping) => (
                   <button
                     key={topping.name}
@@ -287,7 +287,7 @@ export default function CartPage() {
                         </div>
                       )}
                     </div>
-                    <div className="p-1 text-xs">
+                    <div className="p-2 text-sm">
                       {topping.name}
                     </div>
                   </button>
@@ -370,11 +370,11 @@ export default function CartPage() {
                           {/* Product Image */}
                           <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden">
                             {(() => {
-                              const flavor = shavedIceFlavors.find(f => f.name === item.shavedIce.flavor);
+                              const flavor = shavedIceFlavors.find(f => f.name === item.shavedIce?.flavor);
                               return flavor ? (
                                 <img 
                                   src={flavor.image} 
-                                  alt={item.shavedIce.flavor}
+                                  alt={item.shavedIce?.flavor || 'Flavor'}
                                   className="w-full h-full object-cover"
                                   onError={(e) => {
                                     (e.target as HTMLImageElement).style.display = 'none';
@@ -391,9 +391,9 @@ export default function CartPage() {
                           {/* Product Details */}
                           <div className="flex-1">
                             <h3 className="text-lg font-['Iceland'] text-[#543429] font-bold">
-                              {item.shavedIce.flavor} Bingsu - Size {item.cupSize}
+                              {item.shavedIce?.flavor || 'Unknown Flavor'} Bingsu - Size {item.cupSize}
                             </h3>
-                            {item.toppings.length > 0 && (
+                            {item.toppings && item.toppings.length > 0 && (
                               <p className="text-sm text-gray-600 font-['Iceland'] mt-1">
                                 Toppings: {item.toppings.map(t => t.name).join(', ')}
                               </p>

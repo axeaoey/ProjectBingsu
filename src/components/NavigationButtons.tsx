@@ -60,13 +60,13 @@ export default function NavigationButtons() {
     const currentAdminStatus = isAdmin();
     
     if (!currentLoggedIn) {
-      alert('กรุณาเข้าสู่ระบบก่อนเพื่อเข้าถึงหน้า Admin\n\nDemo admin account:\nEmail: admin@bingsu.com\nPassword: admin123');
+      alert('กรุณาเข้าสู่ระบบก่อนเพื่อเข้าถึงหน้า Admin');
       router.push('/login');
       return;
     }
     
     if (!currentAdminStatus) {
-      alert('คุณไม่มีสิทธิ์เข้าถึงหน้า Admin\nเฉพาะผู้ดูแลระบบเท่านั้น\n\nDemo admin account:\nEmail: admin@bingsu.com\nPassword: admin123');
+      alert('คุณไม่มีสิทธิ์เข้าถึงหน้า Admin\nเฉพาะผู้ดูแลระบบเท่านั้น\n');
       return;
     }
     
@@ -79,7 +79,7 @@ export default function NavigationButtons() {
     e.preventDefault();
     
     if (!isAuthenticated()) {
-      alert('กรุณาเข้าสู่ระบบก่อนเพื่อดูโปรไฟล์\n\nDemo accounts:\nUser: user@bingsu.com / user123\nAdmin: admin@bingsu.com / admin123');
+      alert('กรุณาเข้าสู่ระบบก่อนเพื่อดูโปรไฟล์\n');
       router.push('/login');
       return;
     }
