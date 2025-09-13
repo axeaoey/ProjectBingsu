@@ -83,6 +83,9 @@ export default function NavigationButtons() {
       router.push('/login');
       return;
     }
+    
+    // Navigate to profile if authenticated
+    router.push('/profile');
   };
 
   // Button configurations
@@ -142,8 +145,6 @@ export default function NavigationButtons() {
           </Link>
         );
       })}
-      
-      
     </div>
   );
-  }
+}

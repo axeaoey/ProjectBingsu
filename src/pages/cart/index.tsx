@@ -173,18 +173,6 @@ export default function CartPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-10">
-        {/* Add Item Button */}
-        {!showAddItem && (
-          <div className="mb-6 text-center">
-            <button
-              onClick={() => setShowAddItem(true)}
-              className="px-8 py-4 bg-[#69806C] text-white font-['Iceland'] text-xl rounded-lg hover:bg-[#5a6e5e] transition shadow-lg"
-            >
-              + Add New Bingsu
-            </button>
-          </div>
-        )}
-
         {/* Add Item Form */}
         {showAddItem && (
           <div className="bg-white rounded-xl shadow-lg p-6 mb-8">

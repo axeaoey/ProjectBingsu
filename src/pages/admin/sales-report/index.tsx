@@ -37,10 +37,16 @@ export default function SalesReportPage() {
   });
 
   useEffect(() => {
-    calculateSalesData();
+    // Check if running on client side
+    if (typeof window !== 'undefined') {
+      calculateSalesData();
+    }
   }, [period]);
 
   const calculateSalesData = () => {
+    // Double check we're on client side
+    if (typeof window === 'undefined') return;
+    
     const orders: Order[] = JSON.parse(localStorage.getItem('bingsuOrders') || '[]');
     
     // Filter by period
@@ -73,35 +79,29 @@ export default function SalesReportPage() {
     });
 
     // Calculate daily sales
-    const dailySales: SalesData[] = Object.keys(groupedData).map(date => {
-      const dayOrders = groupedData[date];
-      const revenue = dayOrders.reduce((sum, order) => sum + (order.pricing?.total || 0), 0);
-      
-      return {
-        date,
-        orders: dayOrders.length,
-        revenue,
-        avgOrderValue: revenue / dayOrders.length
-      };
-    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const dailySales: SalesData[] = Object.entries(groupedData).map(([date, orders]) => ({
+      date,
+      orders: orders.length,
+      revenue: orders.reduce((sum, order) => sum + (order.pricing?.total || 0), 0),
+      avgOrderValue: orders.reduce((sum, order) => sum + (order.pricing?.total || 0), 0) / orders.length
+    })).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     setSalesData(dailySales);
 
     // Calculate summary
-    const totalRevenue = filteredOrders.reduce((sum, order) => sum + (order.pricing?.total || 0), 0);
     const totalOrders = filteredOrders.length;
+    const totalRevenue = filteredOrders.reduce((sum, order) => sum + (order.pricing?.total || 0), 0);
     
     // Best selling flavor
     const flavorCount: { [key: string]: number } = {};
     filteredOrders.forEach(order => {
-      const flavor = order.shavedIce?.flavor;
-      if (flavor) {
-        flavorCount[flavor] = (flavorCount[flavor] || 0) + 1;
-      }
+      const flavor = order.shavedIce?.flavor || 'Unknown';
+      flavorCount[flavor] = (flavorCount[flavor] || 0) + 1;
     });
-    const bestSellingFlavor = Object.keys(flavorCount).reduce((a, b) => 
-      flavorCount[a] > flavorCount[b] ? a : b, 'N/A'
-    );
+    const bestSellingFlavor = Object.entries(flavorCount).reduce(
+      (a, b) => b[1] > a[1] ? b : a, 
+      ['N/A', 0]
+    )[0];
 
     // Best selling topping
     const toppingCount: { [key: string]: number } = {};
@@ -110,9 +110,10 @@ export default function SalesReportPage() {
         toppingCount[topping.name] = (toppingCount[topping.name] || 0) + 1;
       });
     });
-    const bestSellingTopping = Object.keys(toppingCount).reduce((a, b) => 
-      toppingCount[a] > toppingCount[b] ? a : b, 'N/A'
-    );
+    const bestSellingTopping = Object.entries(toppingCount).reduce(
+      (a, b) => b[1] > a[1] ? b : a,
+      ['N/A', 0]
+    )[0];
 
     // Peak hour
     const hourCount: { [key: string]: number } = {};
@@ -121,9 +122,10 @@ export default function SalesReportPage() {
       const hourStr = `${hour}:00-${hour + 1}:00`;
       hourCount[hourStr] = (hourCount[hourStr] || 0) + 1;
     });
-    const peakHour = Object.keys(hourCount).reduce((a, b) => 
-      hourCount[a] > hourCount[b] ? a : b, 'N/A'
-    );
+    const peakHour = Object.entries(hourCount).reduce(
+      (a, b) => b[1] > a[1] ? b : a,
+      ['N/A', 0]
+    )[0];
 
     // Completion rate
     const completedOrders = filteredOrders.filter(order => order.status === 'Completed').length;
@@ -247,34 +249,34 @@ export default function SalesReportPage() {
           <h3 className="text-2xl text-[#69806C] mb-4">Daily Sales Breakdown</h3>
           
           {salesData.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No sales data for this period</p>
+            <p className="text-gray-500 text-center py-8">No sales data for the selected period</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-2 text-gray-700">Date</th>
-                    <th className="text-center py-2 text-gray-700">Orders</th>
-                    <th className="text-right py-2 text-gray-700">Revenue</th>
-                    <th className="text-right py-2 text-gray-700">Avg Order</th>
+                  <tr className="border-b-2 border-[#69806C]">
+                    <th className="text-left py-2 px-4">Date</th>
+                    <th className="text-center py-2 px-4">Orders</th>
+                    <th className="text-right py-2 px-4">Revenue</th>
+                    <th className="text-right py-2 px-4">Avg Order</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {salesData.map((data, index) => (
-                    <tr key={index} className="border-b hover:bg-gray-50">
-                      <td className="py-3">{data.date}</td>
-                      <td className="py-3 text-center">{data.orders}</td>
-                      <td className="py-3 text-right">฿{data.revenue}</td>
-                      <td className="py-3 text-right">฿{data.avgOrderValue.toFixed(2)}</td>
+                  {salesData.map((data, idx) => (
+                    <tr key={idx} className="border-b hover:bg-gray-50">
+                      <td className="py-2 px-4">{data.date}</td>
+                      <td className="text-center py-2 px-4">{data.orders}</td>
+                      <td className="text-right py-2 px-4">฿{data.revenue}</td>
+                      <td className="text-right py-2 px-4">฿{data.avgOrderValue.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="font-bold">
-                    <td className="py-3">Total</td>
-                    <td className="py-3 text-center">{summary.totalOrders}</td>
-                    <td className="py-3 text-right">฿{summary.totalRevenue}</td>
-                    <td className="py-3 text-right">฿{summary.avgOrderValue.toFixed(2)}</td>
+                  <tr className="border-t-2 border-[#69806C] font-bold">
+                    <td className="py-2 px-4">Total</td>
+                    <td className="text-center py-2 px-4">{summary.totalOrders}</td>
+                    <td className="text-right py-2 px-4">฿{summary.totalRevenue}</td>
+                    <td className="text-right py-2 px-4">฿{summary.avgOrderValue.toFixed(2)}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -282,154 +284,20 @@ export default function SalesReportPage() {
           )}
         </div>
 
-        {/* Sales Chart (Simple Text-based) */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <h3 className="text-2xl text-[#69806C] mb-4">Sales Trend</h3>
-          <div className="space-y-2">
-            {salesData.slice(0, 7).map((data, index) => {
-              const maxRevenue = Math.max(...salesData.map(d => d.revenue));
-              const barWidth = maxRevenue > 0 ? (data.revenue / maxRevenue) * 100 : 0;
-              
-              return (
-                <div key={index} className="flex items-center gap-3">
-                  <div className="w-24 text-sm text-gray-600">{data.date}</div>
-                  <div className="flex-1">
-                    <div className="h-8 bg-gray-200 rounded relative">
-                      <div 
-                        className="h-full bg-gradient-to-r from-[#69806C] to-[#947E5A] rounded"
-                        style={{ width: `${barWidth}%` }}
-                      >
-                        <span className="absolute right-2 top-1 text-white text-sm">
-                          ฿{data.revenue}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Performance Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          {/* Top Products */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-xl text-[#69806C] mb-4">Top Products Performance</h3>
-            
-            {(() => {
-              const orders: Order[] = JSON.parse(localStorage.getItem('bingsuOrders') || '[]');
-              const flavorStats: { [key: string]: { count: number; revenue: number } } = {};
-              
-              orders.forEach(order => {
-                const flavor = order.shavedIce?.flavor;
-                if (flavor) {
-                  if (!flavorStats[flavor]) {
-                    flavorStats[flavor] = { count: 0, revenue: 0 };
-                  }
-                  flavorStats[flavor].count++;
-                  flavorStats[flavor].revenue += order.pricing?.total || 0;
-                }
-              });
-              
-              const sortedFlavors = Object.entries(flavorStats)
-                .sort((a, b) => b[1].revenue - a[1].revenue)
-                .slice(0, 5);
-              
-              return sortedFlavors.length === 0 ? (
-                <p className="text-gray-500">No data available</p>
-              ) : (
-                <div className="space-y-2">
-                  {sortedFlavors.map(([flavor, stats], index) => (
-                    <div key={flavor} className="flex items-center justify-between py-2 border-b">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg font-bold text-[#69806C]">#{index + 1}</span>
-                        <span>{flavor}</span>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold">฿{stats.revenue}</p>
-                        <p className="text-sm text-gray-500">{stats.count} orders</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
-          </div>
-
-          {/* Size Distribution */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-xl text-[#69806C] mb-4">Size Distribution</h3>
-            
-            {(() => {
-              const orders: Order[] = JSON.parse(localStorage.getItem('bingsuOrders') || '[]');
-              const sizeCount: { [key: string]: number } = { S: 0, M: 0, L: 0 };
-              
-              orders.forEach(order => {
-                if (order.cupSize) {
-                  sizeCount[order.cupSize] = (sizeCount[order.cupSize] || 0) + 1;
-                }
-              });
-              
-              const total = Object.values(sizeCount).reduce((sum, count) => sum + count, 0);
-              
-              return total === 0 ? (
-                <p className="text-gray-500">No data available</p>
-              ) : (
-                <div className="space-y-3">
-                  {Object.entries(sizeCount).map(([size, count]) => {
-                    const percentage = total > 0 ? (count / total) * 100 : 0;
-                    
-                    return (
-                      <div key={size}>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-lg font-bold">Size {size}</span>
-                          <span>{count} orders ({percentage.toFixed(1)}%)</span>
-                        </div>
-                        <div className="h-4 bg-gray-200 rounded">
-                          <div 
-                            className="h-full bg-[#69806C] rounded"
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-          </div>
-        </div>
-
         {/* Export Buttons */}
-        <div className="bg-white rounded-lg shadow-lg p-6 text-center">
-          <h3 className="text-xl text-[#69806C] mb-4">Export Report</h3>
-          <div className="flex gap-4 justify-center">
-            <button
-              onClick={exportToJSON}
-              className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
-            >
-              Export as JSON
-            </button>
-            <button
-              onClick={generateCSV}
-              className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
-            >
-              Export as CSV
-            </button>
-            <button
-              onClick={() => window.print()}
-              className="px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition"
-            >
-              Print Report
-            </button>
-          </div>
-        </div>
-
-        {/* Report Footer */}
-        <div className="mt-8 text-center text-gray-500 text-sm">
-          <p>Report generated on {new Date().toLocaleString()}</p>
-          <p>Bingsu Ordering System © 2024</p>
+        <div className="flex gap-4 justify-center">
+          <button
+            onClick={exportToJSON}
+            className="px-6 py-3 bg-[#69806C] text-white rounded-lg hover:bg-[#5a6e5e] transition text-lg"
+          >
+            Export as JSON
+          </button>
+          <button
+            onClick={generateCSV}
+            className="px-6 py-3 bg-[#947E5A] text-white rounded-lg hover:bg-[#7a6548] transition text-lg"
+          >
+            Export as CSV
+          </button>
         </div>
       </div>
     </div>

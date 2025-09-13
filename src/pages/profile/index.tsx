@@ -256,7 +256,7 @@ export default function ProfilePage() {
           
           {recentActivity.length === 0 ? (
             <div className="bg-white rounded-xl shadow-lg p-8 text-center">
-              <div className="text-6xl mb-4">🍧</div>
+              <div className="text-6xl mb-4">🧊</div>
               <p className="text-gray-500 font-['Iceland'] text-lg mb-4">No orders yet</p>
               <Link href="/home">
                 <button className="px-6 py-3 bg-[#69806C] text-white font-['Iceland'] rounded-lg hover:bg-[#5a6e5e] transition">
@@ -314,37 +314,6 @@ export default function ProfilePage() {
               </Link>
             </div>
           )}
-        </div>
-
-        {/* Quick Actions */}
-        <div className="w-full max-w-4xl mx-auto px-4 pb-10">
-          <h3 className="text-2xl text-[#69806C] font-['Iceland'] mb-6 text-center">Quick Actions</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Link href="/home">
-              <div className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition cursor-pointer text-center">
-                <div className="text-3xl mb-2">🍧</div>
-                <p className="text-[#69806C] font-['Iceland']">Order Bingsu</p>
-              </div>
-            </Link>
-            <Link href="/order">
-              <div className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition cursor-pointer text-center">
-                <div className="text-3xl mb-2">📦</div>
-                <p className="text-[#69806C] font-['Iceland']">Track Orders</p>
-              </div>
-            </Link>
-            <Link href="/review">
-              <div className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition cursor-pointer text-center">
-                <div className="text-3xl mb-2">⭐</div>
-                <p className="text-[#69806C] font-['Iceland']">Write Review</p>
-              </div>
-            </Link>
-            <Link href="/cart">
-              <div className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition cursor-pointer text-center">
-                <div className="text-3xl mb-2">🛒</div>
-                <p className="text-[#69806C] font-['Iceland']">View Cart</p>
-              </div>
-            </Link>
-          </div>
         </div>
 
         {/* Footer */}

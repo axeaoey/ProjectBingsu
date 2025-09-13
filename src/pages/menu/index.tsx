@@ -39,11 +39,11 @@ const shavedIceFlavors: MenuItem[] = [
 ];
 
 const toppings: MenuItem[] = [
-  { name: 'Apple', score: 1, description: 'Juicy crunch. Every frosty bite bursts with orchard-fresh flavor.', image: '/images/apple.png', textColor: '#B51212' },
-  { name: 'Cherry', score: 2, description: 'Sweet. Tangy. Cherrylicious! Pure cherry charm in every bite.', image: '/images/cherry.png', textColor: '#B51212' },
-  { name: 'Blueberry', score: 3, description: 'Sweet n tangy berries over fluffy shaved ice. Freshness you can feel.', image: '/images/blueberry.png', textColor: '#354088' },
-  { name: 'Raspberry', score: 4, description: 'Bold, tangy, and oh-so-refreshing. Every bite zings with berry attitude!', image: '/images/raspberry.png', textColor: '#B51212' },
-  { name: 'Strawberry', score: 5, description: 'Sweet, juicy, and perfectly chilled. Like a hug from summer—on ice.', image: '/images/strawberry.png', textColor: '#B51212' },
+  { name: 'Apple', score: 1, description: 'Juicy crunch', image: '/images/apple.png', textColor: '#B51212' },
+  { name: 'Cherry', score: 2, description: 'Sweet & tangy', image: '/images/cherry.png', textColor: '#B51212' },
+  { name: 'Blueberry', score: 3, description: 'Sweet berries', image: '/images/blueberry.png', textColor: '#354088' },
+  { name: 'Raspberry', score: 4, description: 'Bold & tangy', image: '/images/raspberry.png', textColor: '#B51212' },
+  { name: 'Strawberry', score: 5, description: 'Sweet & juicy', image: '/images/strawberry.png', textColor: '#B51212' },
 ];
 
 export default function MenuPage() {
@@ -58,20 +58,27 @@ export default function MenuPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showOrderForm, setShowOrderForm] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [customerCode, setCustomerCode] = useState('');
 
   useEffect(() => {
     if (code) {
       const codeStr = code as string;
       setMenuCode(codeStr.toUpperCase());
       
-      // Determine cup size from code (demo logic)
-      const sizeMap: { [key: string]: string } = {
-        'TEST1': 'S', 'TEST2': 'M', 'TEST3': 'L',
-        'DEMO1': 'S', 'DEMO2': 'M', 'DEMO3': 'L',
-        'ABC12': 'M', 'XYZ99': 'L', 'BING1': 'S', 'BING2': 'M'
-      };
-      
-      setCupSize(sizeMap[codeStr.toUpperCase()] || 'M');
+      // Check generated codes first
+      const codeMap = JSON.parse(localStorage.getItem('menuCodeMap') || '{}');
+      if (codeMap[codeStr.toUpperCase()]) {
+        setCupSize(codeMap[codeStr.toUpperCase()]);
+      } else {
+        // Fallback to predefined codes
+        const sizeMap: { [key: string]: string } = {
+          'TEST1': 'S', 'TEST2': 'M', 'TEST3': 'L',
+          'DEMO1': 'S', 'DEMO2': 'M', 'DEMO3': 'L',
+          'ABC12': 'M', 'XYZ99': 'L', 'BING1': 'S', 'BING2': 'M'
+        };
+        setCupSize(sizeMap[codeStr.toUpperCase()] || 'M');
+      }
       setShowOrderForm(true);
     }
   }, [code]);
@@ -99,9 +106,35 @@ export default function MenuPage() {
     return total;
   };
 
-  const handleCreateOrder = async () => {
+  const validateOrder = () => {
+    const errors = [];
+    
     if (!selectedFlavor) {
-      setError('Please select a shaved ice flavor');
+      errors.push('กรุณาเลือกรสชาติ Shaved Ice');
+    }
+    
+    if (selectedToppings.length === 0) {
+      errors.push('กรุณาเลือกท็อปปิ้งอย่างน้อย 1 อย่าง');
+    }
+    
+    if (selectedToppings.length > 3) {
+      errors.push('เลือกท็อปปิ้งได้สูงสุด 3 อย่าง');
+    }
+    
+    if (!menuCode || menuCode.length !== 5) {
+      errors.push('โค้ดเมนูไม่ถูกต้อง');
+    }
+    
+    if (errors.length > 0) {
+      setError(errors.join('\n'));
+      return false;
+    }
+    
+    return true;
+  };
+
+  const handleCreateOrder = async () => {
+    if (!validateOrder()) {
       return;
     }
 
@@ -109,17 +142,28 @@ export default function MenuPage() {
     setError('');
 
     try {
-      // Generate customer code locally (since backend might not be connected)
-      let customerCode = `#${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+      // Calculate points
+      const totalScore = selectedFlavor!.score + 
+        selectedToppings.reduce((sum, t) => sum + t.score, 0);
+      
+      // Save points for non-logged in users
+      if (!localStorage.getItem('token')) {
+        const localPoints = parseInt(localStorage.getItem('userPoints') || '0');
+        const newPoints = localPoints + totalScore;
+        localStorage.setItem('userPoints', JSON.stringify(newPoints));
+      }
+
+      // Generate customer code
+      let generatedCustomerCode = `#${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
       
       // Create order object
       const order = {
         menuCode: menuCode.toUpperCase(),
-        customerCode,
+        customerCode: generatedCustomerCode,
         cupSize,
         shavedIce: {
-          flavor: selectedFlavor.name,
-          points: selectedFlavor.score
+          flavor: selectedFlavor!.name,
+          points: selectedFlavor!.score
         },
         toppings: selectedToppings.map(t => ({
           name: t.name,
@@ -128,17 +172,18 @@ export default function MenuPage() {
         pricing: {
           total: calculateTotal()
         },
+        score: totalScore,
         specialInstructions,
         status: 'Pending',
         createdAt: new Date().toISOString()
       };
 
-      // Save to localStorage as backup
+      // Save to localStorage
       const existingOrders = JSON.parse(localStorage.getItem('bingsuOrders') || '[]');
       existingOrders.push(order);
       localStorage.setItem('bingsuOrders', JSON.stringify(existingOrders));
       
-      // Try to send to backend (optional)
+      // Try to send to backend
       try {
         const response = await fetch('http://localhost:5000/api/orders/create', {
           method: 'POST',
@@ -156,16 +201,17 @@ export default function MenuPage() {
         
         if (response.ok) {
           const result = await response.json();
-          customerCode = result.customerCode || customerCode;
+          generatedCustomerCode = result.customerCode || generatedCustomerCode;
         }
       } catch (apiError) {
         console.log('API not available, using local storage');
       }
       
-      // Show success and redirect
-      alert(`✅ Order created successfully!\n\nYour customer code is: ${customerCode}\n\nPlease save this code to track your order.`);
+      // Set customer code and show success modal
+      setCustomerCode(generatedCustomerCode);
+      setShowSuccessModal(true);
       
-      // Add to cart if needed
+      // Add to cart
       const cartItem = {
         id: Date.now().toString(),
         cupSize,
@@ -179,9 +225,6 @@ export default function MenuPage() {
       const cart = JSON.parse(localStorage.getItem('bingsuCart') || '[]');
       cart.push(cartItem);
       localStorage.setItem('bingsuCart', JSON.stringify(cart));
-      
-      // Redirect to tracking page
-      router.push(`/order/track?code=${customerCode}`);
       
     } catch (err: any) {
       setError('Failed to create order. Please try again.');
@@ -236,7 +279,7 @@ export default function MenuPage() {
           </div>
         )}
 
-        {/* Shaved Ice Selection */}
+        {/* Step 1: Shaved Ice Selection */}
         <div className="mb-12">
           <h3 className="text-3xl text-[#69806C] mb-6 text-center font-['Iceland']">
             Step 1: Select Shaved Ice Flavor
@@ -246,25 +289,54 @@ export default function MenuPage() {
               <div
                 key={flavor.name}
                 onClick={() => setSelectedFlavor(flavor)}
-                className={`cursor-pointer p-6 rounded-lg border-2 transition bg-white ${
+                className={`cursor-pointer rounded-lg border-2 transition bg-white overflow-hidden ${
                   selectedFlavor?.name === flavor.name
                     ? 'border-[#69806C] shadow-lg transform scale-105'
                     : 'border-gray-300 hover:border-[#69806C] hover:shadow-md'
                 }`}
               >
-                <h4 className="text-2xl font-['Iceland'] mb-2 text-center" style={{ color: flavor.color }}>
-                  {flavor.name}
-                </h4>
-                <p className="text-sm text-gray-600 text-center">{flavor.description}</p>
-                {selectedFlavor?.name === flavor.name && (
-                  <div className="mt-2 text-center text-green-600 font-bold">✓ Selected</div>
-                )}
+                {/* Image section */}
+                <div className="h-48 relative">
+                  <img 
+                    src={flavor.image} 
+                    alt={flavor.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const nextElement = target.nextElementSibling as HTMLElement;
+                      if (nextElement) {
+                        nextElement.classList.remove('hidden');
+                      }
+                    }}
+                  />
+                  <div 
+                    className="hidden absolute inset-0 flex items-center justify-center text-6xl" 
+                    style={{ backgroundColor: (flavor.color || '#69806C') + '20' }}
+                  >
+                    🍧
+                  </div>
+                </div>
+                
+                {/* Flavor details */}
+                <div className="p-6">
+                  <h4 
+                    className="text-2xl font-['Iceland'] mb-2 text-center" 
+                    style={{ color: flavor.color || '#69806C' }}
+                  >
+                    {flavor.name}
+                  </h4>
+                  <p className="text-sm text-gray-600 text-center">{flavor.description}</p>
+                  {selectedFlavor?.name === flavor.name && (
+                    <div className="mt-2 text-center text-green-600 font-bold">✓ Selected</div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Toppings Selection */}
+        {/* Step 2: Toppings Selection */}
         <div className="mb-12">
           <h3 className="text-3xl text-[#69806C] mb-6 text-center font-['Iceland']">
             Step 2: Select Toppings (Max 3)
@@ -274,18 +346,41 @@ export default function MenuPage() {
               <div
                 key={topping.name}
                 onClick={() => toggleTopping(topping)}
-                className={`cursor-pointer p-4 rounded-lg border-2 transition text-center bg-white ${
+                className={`cursor-pointer rounded-lg border-2 transition text-center bg-white overflow-hidden ${
                   selectedToppings.find(t => t.name === topping.name)
                     ? 'border-[#69806C] shadow-lg transform scale-105'
                     : 'border-gray-300 hover:border-[#69806C] hover:shadow-md'
                 }`}
               >
-                <h4 className="text-lg font-['Iceland']" style={{ color: topping.textColor }}>
-                  {topping.name}
-                </h4>
-                {selectedToppings.find(t => t.name === topping.name) && (
-                  <div className="mt-1 text-green-600 font-bold">✓</div>
-                )}
+                {/* Topping image */}
+                <div className="h-20 relative">
+                  <img 
+                    src={topping.image} 
+                    alt={topping.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const nextElement = target.nextElementSibling as HTMLElement;
+                      if (nextElement) {
+                        nextElement.classList.remove('hidden');
+                      }
+                    }}
+                  />
+                  <div className="hidden w-full h-full flex items-center justify-center text-2xl bg-gray-100">
+                    🍓
+                  </div>
+                </div>
+                
+                {/* Topping name */}
+                <div className="p-2">
+                  <h4 className="text-lg font-['Iceland']" style={{ color: topping.textColor || '#69806C' }}>
+                    {topping.name}
+                  </h4>
+                  {selectedToppings.find(t => t.name === topping.name) && (
+                    <div className="mt-1 text-green-600 font-bold">✓</div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -337,6 +432,33 @@ export default function MenuPage() {
           </button>
         </div>
       </div>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md">
+            <h2 className="text-3xl text-green-600 mb-4 text-center">✅ สั่งซื้อสำเร็จ!</h2>
+            <div className="bg-gray-100 p-4 rounded mb-4">
+              <p className="text-sm text-gray-600 text-center">รหัสรับสินค้า:</p>
+              <p className="text-4xl font-bold text-[#69806C] text-center">{customerCode}</p>
+            </div>
+            <p className="text-sm mb-4 text-center">
+              ⚠️ กรุณาจดจำหรือถ่ายรูปรหัสนี้เพื่อรับสินค้าและชำระเงินที่หน้าร้าน
+            </p>
+            {!localStorage.getItem('token') && (
+              <p className="text-sm text-orange-600 mb-4 text-center">
+                💰 คุณได้รับแต้มสะสม! สมัครสมาชิกเพื่อรักษาแต้มของคุณ
+              </p>
+            )}
+            <button
+              onClick={() => router.push(`/order/track?code=${customerCode}`)}
+              className="w-full bg-[#69806C] text-white py-3 rounded font-['Iceland'] text-lg hover:bg-[#5a6e5e] transition"
+            >
+              ติดตามสถานะออเดอร์
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

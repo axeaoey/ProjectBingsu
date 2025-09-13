@@ -20,6 +20,8 @@ export default function LoginPage() {
 
     try {
       const result = await api.login(email, password);
+
+       router.push('/home');
       
       // Redirect based on role
       if (result.user.role === 'admin') {

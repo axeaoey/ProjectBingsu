@@ -41,6 +41,7 @@ export default function OrderTrackingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [recentOrders, setRecentOrders] = useState<OrderData[]>([]);
 
   useEffect(() => {
     if (code) {
@@ -48,6 +49,14 @@ export default function OrderTrackingPage() {
       trackOrder(code as string);
     }
   }, [code]);
+
+  // Load recent orders on client side only
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const orders = JSON.parse(localStorage.getItem('bingsuOrders') || '[]');
+      setRecentOrders(orders.slice(-3));
+    }
+  }, [order]); // Update when order changes
 
   // Auto-update order status
   useEffect(() => {
@@ -62,7 +71,7 @@ export default function OrderTrackingPage() {
   }, [order, autoRefresh]);
 
   const updateOrderStatus = () => {
-    if (!order) return;
+    if (!order || typeof window === 'undefined') return;
     
     const statusFlow = ['Pending', 'Preparing', 'Ready', 'Completed'];
     const currentIndex = statusFlow.indexOf(order.status);
@@ -93,21 +102,24 @@ export default function OrderTrackingPage() {
     setError('');
 
     try {
-      // First try to find in localStorage
-      const localOrders = JSON.parse(localStorage.getItem('bingsuOrders') || '[]');
-      const localOrder = localOrders.find((o: OrderData) => 
-        o.customerCode.toLowerCase() === trackingCode.toLowerCase()
-      );
-      
-      if (localOrder) {
-        // Add orderId if not present
-        if (!localOrder.orderId) {
-          localOrder.orderId = `ORD${Math.floor(Math.random() * 10000).toString().padStart(5, '0')}`;
+      // Check if we're on client side
+      if (typeof window !== 'undefined') {
+        // First try to find in localStorage
+        const localOrders = JSON.parse(localStorage.getItem('bingsuOrders') || '[]');
+        const localOrder = localOrders.find((o: OrderData) => 
+          o.customerCode.toLowerCase() === trackingCode.toLowerCase()
+        );
+        
+        if (localOrder) {
+          // Add orderId if not present
+          if (!localOrder.orderId) {
+            localOrder.orderId = `ORD${Math.floor(Math.random() * 10000).toString().padStart(5, '0')}`;
+          }
+          setOrder(localOrder);
+          setError('');
+          setLoading(false);
+          return;
         }
-        setOrder(localOrder);
-        setError('');
-        setLoading(false);
-        return;
       }
 
       // Try API if available
@@ -195,7 +207,7 @@ export default function OrderTrackingPage() {
 
   // Demo function to manually update status
   const manualUpdateStatus = () => {
-    if (!order) return;
+    if (!order || typeof window === 'undefined') return;
     
     const statusFlow = ['Pending', 'Preparing', 'Ready', 'Completed'];
     const currentIndex = statusFlow.indexOf(order.status);
@@ -262,36 +274,35 @@ export default function OrderTrackingPage() {
         </div>
 
         {/* Show Recent Orders (Demo Helper) */}
-        {!order && !loading && (
+        {!order && !loading && recentOrders.length > 0 && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
             <p className="text-blue-800 font-['Iceland'] text-lg mb-2">
               💡  Tip: Recent orders from this browser
             </p>
             <div className="text-sm text-blue-700 font-['Iceland']">
-              {(() => {
-                const orders = JSON.parse(localStorage.getItem('bingsuOrders') || '[]');
-                if (orders.length === 0) {
-                  return <p>No recent orders. Create a new order from the home page!</p>;
-                }
-                return (
-                  <div>
-                    <p>Your recent customer codes:</p>
-                    {orders.slice(-3).map((o: OrderData, i: number) => (
-                      <button
-                        key={i}
-                        onClick={() => {
-                          setCustomerCode(o.customerCode);
-                          trackOrder(o.customerCode);
-                        }}
-                        className="block mt-1 text-blue-600 underline hover:text-blue-800"
-                      >
-                        {o.customerCode} - {o.shavedIce.flavor} ({o.status})
-                      </button>
-                    ))}
-                  </div>
-                );
-              })()}
+              <p>Your recent customer codes:</p>
+              {recentOrders.map((o: OrderData, i: number) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setCustomerCode(o.customerCode);
+                    trackOrder(o.customerCode);
+                  }}
+                  className="block mt-1 text-blue-600 underline hover:text-blue-800"
+                >
+                  {o.customerCode} - {o.shavedIce.flavor} ({o.status})
+                </button>
+              ))}
             </div>
+          </div>
+        )}
+
+        {/* No orders message */}
+        {!order && !loading && recentOrders.length === 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
+            <p className="text-blue-800 font-['Iceland'] text-lg">
+              💡  No recent orders. Create a new order from the home page!
+            </p>
           </div>
         )}
 
